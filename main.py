@@ -25,7 +25,7 @@ imdb["test"][0]
 }
 
 def preprocess_function(examples):
-    return tokenizer(examples["text"], truncation=True)
+    return tokenizer(examples["text"], truncation=True, max_length=128)
 
 def compute_metrics(eval_pred):
     predictions, labels = eval_pred
@@ -41,8 +41,9 @@ tokenized_imdb = imdb.map(preprocess_function, batched=True)
 training_args = TrainingArguments(
     output_dir="output",
     learning_rate=2e-5,
-    per_device_train_batch_size=16,
-    per_device_eval_batch_size=16,
+    per_device_train_batch_size=1,
+    per_device_eval_batch_size=1,
+    gradient_accumulation_steps=1,
     num_train_epochs=2,
     weight_decay=0.01,
     eval_strategy="epoch",
