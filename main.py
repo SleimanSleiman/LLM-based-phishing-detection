@@ -25,7 +25,7 @@ imdb["test"][0]
 }
 
 def preprocess_function(examples):
-    return tokenizer(examples["text"], truncation=True, max_length=128)
+    return tokenizer(examples["text"], truncation=True, max_length=16)
 
 def compute_metrics(eval_pred):
     predictions, labels = eval_pred
