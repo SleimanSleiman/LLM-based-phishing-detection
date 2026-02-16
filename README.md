@@ -1,2 +1,60 @@
-# LLM-based phishing detection
+LLM-based-phishing-detection
+
+What this is
+
+A minimal example repo that trains a text classifier (DistilBERT) and includes a small inference helper (`infer.py`). The `infer.py` script supports single-text and batched inference and can write CSV results.
+
+Quick start (inference)
+
+1. Install (use the same Python you run scripts with):
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install transformers datasets evaluate torch sentencepiece tokenizers tiktoken protobuf
+```
+
+2. Run a single inference using the trained output or a checkpoint:
+
+```bash
+# use the Trainer output directory
+python infer.py --model output --text "I hated it."
+
+# or load a checkpoint directly
+python infer.py --model output/checkpoint-25000 --text "I hated it."
+```
+
+3. Batch inference (one example per line) and save to CSV:
+
+```bash
+python infer.py --model output --input-file lines.txt --output-csv results.csv --batch-size 64
+```
+
+Device notes
+
+- The script auto-selects MPS on supported macOS devices; use `--device cpu` to force CPU.
+- If you see MPS out-of-memory errors, reduce `--batch-size` or use `--device cpu`.
+
+Common fixes
+
+- Tokenizer errors: install `sentencepiece`, `tokenizers`, or `tiktoken`.
+- Protobuf errors: install `protobuf` (e.g., `python -m pip install protobuf`).
+- Large model files: this repo uses Git LFS for `.safetensors`/`.pt` files. Run `git lfs install` and `git lfs track "*.safetensors" "*.pt"` if needed.
+
+Interpreting sentiment (what counts as negative or positive)
+
+- Negative signals: words or phrases expressing dislike, criticism, or negative emotion, "hate", "terrible", "poor", "would not recommend", "awful". Negation flips matter ("not good" → negative).
+- Positive signals: praise, recommendation, or positive emotion e.g., "love", "great", "fantastic", "highly recommend", "very satisfied". Intensifiers like "really" or "absolutely" increase confidence.
+- Ambiguous / neutral: phrases like "it was okay", "not bad", or mixed sentences can be borderline; the model may return medium confidence.
+- Sarcasm and irony: lexical cues may be positive while intent is negative ("Amazing, I fell asleep."); these are hard for the model and often misclassified.
+
+Scoring and thresholds
+
+- The model returns a probability score for each class. By default the highest score is chosen as the label.
+- Practical thresholds:
+	- Confident negative: NEGATIVE with score ≥ 0.65
+	- Ambiguous/neutral: scores between 0.4 and 0.65, consider flagging for review
+	- Confident positive: POSITIVE with score ≥ 0.65
+
+
+
 

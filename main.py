@@ -1,10 +1,11 @@
 from datasets import load_dataset
-from transformers import AutoTokenizer
-from transformers import DataCollatorWithPadding
+from transformers import AutoTokenizer, pipeline, DataCollatorWithPadding, AutoModelForSequenceClassification, TrainingArguments, Trainer
+
 import evaluate
 import numpy as np
-from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
-
+import torch
+print(torch.backends.mps.is_available())  # True if MPS GPU is usable
+device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
 
 tokenizer = AutoTokenizer.from_pretrained("distilbert/distilbert-base-uncased")
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
@@ -37,13 +38,13 @@ model = AutoModelForSequenceClassification.from_pretrained(
 )
 
 tokenized_imdb = imdb.map(preprocess_function, batched=True)
+model.to(device)
 
 training_args = TrainingArguments(
     output_dir="output",
     learning_rate=2e-5,
-    per_device_train_batch_size=1,
-    per_device_eval_batch_size=1,
-    gradient_accumulation_steps=1,
+    per_device_train_batch_size=8,
+    per_device_eval_batch_size=8,
     num_train_epochs=2,
     weight_decay=0.01,
     eval_strategy="epoch",
@@ -52,14 +53,30 @@ training_args = TrainingArguments(
 )
 
 trainer = Trainer(
-    model=model,
+    model=model.to(device),
     args=training_args,
     train_dataset=tokenized_imdb["train"],
     eval_dataset=tokenized_imdb["test"],
-    processing_class=tokenizer,
     data_collator=data_collator,
     compute_metrics=compute_metrics,
+
 )
 
 trainer.train()
 
+text = "This was a masterpiece. Not completely faithful to the books, but enthralling from beginning to end. Might be my favorite of the three."
+
+classifier = pipeline("sentiment-analysis", model="output")
+classifier(text)
+[{'label': 'POSITIVE', 'score': 0.9994940757751465}]
+
+tokenizer = AutoTokenizer.from_pretrained("stevhliu/my_awesome_model")
+inputs = tokenizer(text, return_tensors="pt")
+
+model = AutoModelForSequenceClassification.from_pretrained("stevhliu/my_awesome_model")
+with torch.no_grad():
+    logits = model(**inputs).logits
+    
+predicted_class_id = logits.argmax().item()
+model.config.id2label[predicted_class_id]
+'POSITIVE'
